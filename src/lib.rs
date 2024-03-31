@@ -22,23 +22,23 @@ impl Configer {
         }
     }
 
-    pub fn set_root(&self, path: impl ToString) {
-        *self.path.write().unwrap() = PathBuf::from_str(&path.to_string()).unwrap();
+    pub fn set_root(&self, path: &str) {
+        *self.path.write().unwrap() = PathBuf::from_str(path).unwrap();
     }
 
     pub fn hostname(&self) -> Option<&String> {
         self.hostname.as_ref()
     }
 
-    pub fn path(&self, file: impl ToString) -> PathBuf {
-        let mut path = self.path.read().unwrap().as_path().join(file.to_string());
+    pub fn path(&self, file: &str) -> PathBuf {
+        let mut path = self.path.read().unwrap().as_path().join(file);
         if path.extension() != Some(OsStr::new("json")) {
             path.set_extension("json");
         }
         path
     }
 
-    pub fn write(&self, filename: impl ToString, v: &Value) {
+    pub fn write(&self, filename: &str, v: &Value) {
         let mut path = self.path(filename);
         path.parent().map(|p| {
             if !p.exists() {
@@ -48,7 +48,7 @@ impl Configer {
         fs::write(path, serde_json::to_string_pretty(v).expect("Failed to format json"));
     }
 
-    pub fn read(&self, filename: impl ToString) -> Option<Value> {
+    pub fn read(&self, filename: &str) -> Option<Value> {
         let mut path = self.path(filename);
         fs::read_to_string(path).map_or(None, |v| serde_json::from_str(&v).map_or(None, |v| v))
     }
