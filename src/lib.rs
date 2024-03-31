@@ -1,10 +1,10 @@
 #![allow(dead_code, unused)]
 
-use std::{path::PathBuf, str::FromStr, fs::{create_dir_all, self}, ffi::OsStr};
+use std::{path::PathBuf, str::FromStr, fs::{create_dir_all, self}, ffi::OsStr, io};
 use std::sync::{Arc, RwLock};
 
-use serde::Deserializer;
-use serde_json::Value;
+use serde::{Deserializer, Serializer, Serialize, Deserialize, de::DeserializeOwned};
+use serde_json::{Value, Error};
 pub struct Configer {
     hostname: Option<String>,
     path: Arc<RwLock<PathBuf>>,
@@ -38,18 +38,23 @@ impl Configer {
         path
     }
 
-    pub fn write(&self, filename: &str, v: &Value) {
+    pub fn write<T: Serialize>(&self, filename: &str, v: &T) -> Result<(), io::Error> {
         let mut path = self.path(filename);
         path.parent().map(|p| {
             if !p.exists() {
                 fs::create_dir_all(p);
             }
         });
-        fs::write(path, serde_json::to_string_pretty(v).expect("Failed to format json"));
+        fs::write(path, serde_json::to_string_pretty(v).unwrap())?;
+        Ok(())
     }
 
-    pub fn read(&self, filename: &str) -> Option<Value> {
+    pub fn read<T: DeserializeOwned>(&self, filename: &str) -> Option<Result<T, Error>> {
         let mut path = self.path(filename);
-        fs::read_to_string(path).map_or(None, |v| serde_json::from_str(&v).map_or(None, |v| v))
+        if let Ok(content) = fs::read_to_string(path) {
+            Some(serde_json::from_str(&content))
+        } else {
+            None
+        }
     }
 }
